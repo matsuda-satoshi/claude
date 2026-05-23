@@ -452,6 +452,11 @@
     </div>
   </div>
 
+  <div class="setup-section">
+    <p class="setup-label">今日話したいこと（任意）</p>
+    <textarea class="api-input" id="context-input" rows="4" placeholder="例：会議MVPアプリの開発について話したい。話者分離の方法をディスカッションしたい。&#10;&#10;ここに会話の背景や続きを書いておくと、その文脈でClaudeが返答してくれます。" style="resize:vertical; line-height:1.6; font-family:'DM Mono',monospace; font-size:0.82rem;"></textarea>
+  </div>
+
   <button class="start-btn" id="start-btn" onclick="startApp()" disabled>はじめる</button>
 </div>
 
@@ -497,12 +502,14 @@ let isSpeechReady = false;
 let currentUtterance = null;
 let conversationHistory = [];
 
-const SYSTEM_PROMPT = `あなたはClaudeです。音声で会話しています。
+const BASE_SYSTEM_PROMPT = `あなたはClaudeです。音声で会話しています。
 以下のことを守ってください：
 - 返答は簡潔に、1〜3文程度にまとめてください
 - 音声で読み上げられるので、マークダウン記法（**太字**、# 見出し、箇条書きなど）は使わないでください
 - 自然な話し言葉で返してください
 - 長い説明が必要な場合も、まず核心を一言で言ってから補足してください`;
+
+let SYSTEM_PROMPT = BASE_SYSTEM_PROMPT;
 
 // ===== SETUP =====
 window.onload = () => {
@@ -580,11 +587,24 @@ function checkReady() {
 function startApp() {
   apiKey = document.getElementById('api-key').value.trim();
   sessionStorage.setItem('claude_api_key', apiKey);
+
+  // コンテキストをシステムプロンプトに追加
+  const context = document.getElementById('context-input').value.trim();
+  if (context) {
+    SYSTEM_PROMPT = BASE_SYSTEM_PROMPT + `\n\n## 今日の会話の背景・コンテキスト\n${context}\n\nこの背景を踏まえて会話してください。`;
+  } else {
+    SYSTEM_PROMPT = BASE_SYSTEM_PROMPT;
+  }
+
   document.getElementById('screen-setup').style.display = 'none';
   document.getElementById('screen-main').style.display = 'flex';
   initRecognition();
-  addMessage('assistant', 'こんにちは。何でも話しかけてください。');
-  speak('こんにちは。何でも話しかけてください。');
+
+  const greeting = context
+    ? 'わかりました。その話を続けましょう。'
+    : 'こんにちは。何でも話しかけてください。';
+  addMessage('assistant', greeting);
+  speak(greeting);
 }
 
 function goSettings() {
