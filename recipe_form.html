@@ -8,7 +8,10 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif; background: #f5f5f3; color: #1a1a1a; padding: 24px 16px 60px; }
   .container { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
-  h1 { font-size: 20px; font-weight: 500; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .page-header { display: flex; align-items: center; gap: 10px; }
+  .btn-back { background: none; border: 0.5px solid #ddd; border-radius: 8px; padding: 6px 12px; font-size: 13px; cursor: pointer; color: #444; text-decoration: none; display: flex; align-items: center; gap: 4px; }
+  .btn-back:hover { background: #eee; }
+  h1 { font-size: 20px; font-weight: 500; display: flex; align-items: center; gap: 8px; }
   section { background: #fff; border: 0.5px solid #ddd; border-radius: 12px; padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; }
   h3 { font-size: 13px; font-weight: 500; color: #666; margin-bottom: 2px; }
   label.field-label { font-size: 13px; color: #666; display: block; margin-bottom: 4px; }
@@ -53,7 +56,10 @@
 </head>
 <body>
 <div class="container">
-  <h1>🍳 レシピを追加</h1>
+  <div class="page-header">
+    <a href="recipe_list.html" class="btn-back">← 一覧へ</a>
+    <h1 id="page-title">🍳 レシピを追加</h1>
+  </div>
 
   <div id="alert" class="alert hidden"></div>
 
@@ -90,9 +96,7 @@
   <!-- タグ -->
   <section>
     <h3>タグ</h3>
-    <div class="tags" id="tags">
-      <!-- JS で生成 -->
-    </div>
+    <div class="tags" id="tags"></div>
   </section>
 
   <!-- 材料 -->
@@ -109,7 +113,7 @@
   <section>
     <h3>手順</h3>
     <div id="steps" style="display:flex;flex-direction:column;gap:10px;"></div>
-    <div class="add-row" style="margin-top:4px;">
+    <div class="add-row">
       <button class="btn-add" onclick="addStep()">＋ 手順を追加</button>
     </div>
   </section>
@@ -132,6 +136,17 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const TAGS = ["和食","洋食","中華","エスニック","作り置き","時短","おつまみ","お弁当","主食","主菜","副菜","揚げ物","汁物","デザート"];
 let selectedTags = new Set();
+
+// 編集モード判定
+const urlParams = new URLSearchParams(window.location.search);
+const editId = urlParams.get("id");
+const isEditMode = !!editId;
+
+if (isEditMode) {
+  document.getElementById("page-title").textContent = "🍳 レシピを編集";
+  document.title = "レシピを編集";
+  document.getElementById("submit-btn").textContent = "更新する";
+}
 
 // タグ描画
 const tagsEl = document.getElementById("tags");
@@ -224,6 +239,53 @@ function removeStep(i) {
   renderSteps();
 }
 
+// 編集モード：既存データを読み込んでフォームに反映
+async function loadRecipe(id) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/recipes?id=eq.${id}&select=*`, {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      }
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    if (!data.length) throw new Error("レシピが見つかりません");
+    const r = data[0];
+
+    document.getElementById("title").value = r.title || "";
+    document.getElementById("servings").value = r.servings || 4;
+    document.getElementById("cooking_time").value = r.cooking_time || "";
+    document.getElementById("difficulty").value = r.difficulty || "普通";
+    document.getElementById("is_favorite").checked = r.is_favorite || false;
+    document.getElementById("memo").value = r.memo || "";
+
+    // タグ
+    if (r.tags && r.tags.length) {
+      r.tags.forEach(t => {
+        selectedTags.add(t);
+        document.querySelectorAll(".tag").forEach(el => {
+          if (el.textContent === t) el.classList.add("selected");
+        });
+      });
+    }
+
+    // 材料
+    if (r.ingredients && r.ingredients.length) {
+      ingredientData = r.ingredients;
+      renderIngredients();
+    }
+
+    // 手順
+    if (r.steps && r.steps.length) {
+      stepData = r.steps;
+      renderSteps();
+    }
+  } catch (e) {
+    showAlert("error", "データの読み込みに失敗しました: " + e.message);
+  }
+}
+
 // アラート
 function showAlert(type, msg) {
   const el = document.getElementById("alert");
@@ -250,14 +312,14 @@ function resetForm() {
   document.getElementById("alert").classList.add("hidden");
 }
 
-// 登録
+// 登録 or 更新
 async function handleSubmit() {
   const title = document.getElementById("title").value.trim();
   if (!title) { showAlert("error", "レシピ名を入力してください"); return; }
 
   const btn = document.getElementById("submit-btn");
   btn.disabled = true;
-  btn.textContent = "登録中…";
+  btn.textContent = isEditMode ? "更新中…" : "登録中…";
 
   const payload = {
     title,
@@ -272,33 +334,60 @@ async function handleSubmit() {
   };
 
   try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/recipes`, {
-      method: "POST",
-      headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        "Content-Type": "application/json",
-        Prefer: "return=minimal",
-      },
-      body: JSON.stringify(payload),
-    });
+    let res;
+    if (isEditMode) {
+      // 編集：PATCH
+      res = await fetch(`${SUPABASE_URL}/rest/v1/recipes?id=eq.${editId}`, {
+        method: "PATCH",
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          "Content-Type": "application/json",
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify(payload),
+      });
+    } else {
+      // 新規：POST
+      res = await fetch(`${SUPABASE_URL}/rest/v1/recipes`, {
+        method: "POST",
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          "Content-Type": "application/json",
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify(payload),
+      });
+    }
+
     if (!res.ok) {
       const err = await res.text();
       throw new Error(err);
     }
-    showAlert("success", "登録しました！");
-    resetForm();
+
+    if (isEditMode) {
+      showAlert("success", "更新しました！");
+    } else {
+      showAlert("success", "登録しました！");
+      resetForm();
+    }
   } catch (e) {
     showAlert("error", e.message);
   } finally {
     btn.disabled = false;
-    btn.textContent = "登録する";
+    btn.textContent = isEditMode ? "更新する" : "登録する";
   }
 }
 
 // 初期描画
 renderIngredients();
 renderSteps();
+
+// 編集モードならデータ読み込み
+if (isEditMode) {
+  loadRecipe(editId);
+}
 </script>
 </body>
 </html>

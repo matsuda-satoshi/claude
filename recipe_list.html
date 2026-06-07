@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>レシピ一覧</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif; background: #f5f5f3; color: #1a1a1a; padding: 24px 16px 60px; }
+  .container { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  h1 { font-size: 20px; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+  .btn-add-new {
+    background: #1a1a1a; color: #fff; border: none; border-radius: 8px;
+    padding: 8px 16px; font-size: 13px; font-weight: 500; cursor: pointer;
+    display: flex; align-items: center; gap: 6px; text-decoration: none;
+    transition: opacity .15s;
+  }
+  .btn-add-new:hover { opacity: 0.75; }
+
+  /* 検索・フィルター */
+  .filter-bar { background: #fff; border: 0.5px solid #ddd; border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+  .search-wrap { position: relative; }
+  .search-wrap input {
+    width: 100%; border: 0.5px solid #ccc; border-radius: 8px;
+    padding: 8px 10px 8px 34px; font-size: 14px; font-family: inherit;
+    background: #fff; outline: none; transition: border-color .15s;
+  }
+  .search-wrap input:focus { border-color: #185FA5; }
+  .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #aaa; font-size: 16px; pointer-events: none; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag {
+    padding: 5px 12px; border: 1.5px solid #ddd; border-radius: 20px;
+    font-size: 12px; cursor: pointer; user-select: none; transition: all .15s;
+    background: transparent; color: #666;
+  }
+  .tag.selected { border-color: #185FA5; background: #185FA5; color: #fff; font-weight: 500; }
+
+  /* カード */
+  .cards { display: flex; flex-direction: column; gap: 10px; }
+  .card {
+    background: #fff; border: 0.5px solid #ddd; border-radius: 12px;
+    padding: 16px 18px; display: flex; flex-direction: column; gap: 8px;
+    transition: box-shadow .15s;
+  }
+  .card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+  .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .card-title { font-size: 16px; font-weight: 600; line-height: 1.3; }
+  .card-favorite { font-size: 16px; flex-shrink: 0; }
+  .card-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .badge {
+    font-size: 11px; padding: 3px 9px; border-radius: 20px;
+    background: #f0f0f0; color: #555; border: 0.5px solid #e0e0e0;
+  }
+  .badge.easy { background: #eaf3de; color: #3B6D11; border-color: #97C459; }
+  .badge.hard { background: #fcebeb; color: #A32D2D; border-color: #F09595; }
+  .card-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+  .card-tag { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: #EEF4FB; color: #185FA5; border: 0.5px solid #c5d9f0; }
+  .card-actions { display: flex; gap: 8px; margin-top: 4px; }
+  .btn-edit {
+    background: none; border: 0.5px solid #ddd; border-radius: 8px;
+    padding: 6px 14px; font-size: 13px; cursor: pointer; color: #444;
+    font-family: inherit; transition: background .15s;
+  }
+  .btn-edit:hover { background: #f5f5f3; }
+  .btn-delete {
+    background: none; border: 0.5px solid #f5b8b8; border-radius: 8px;
+    padding: 6px 14px; font-size: 13px; cursor: pointer; color: #e24b4a;
+    font-family: inherit; transition: background .15s;
+  }
+  .btn-delete:hover { background: #fcebeb; }
+
+  /* 空・ローディング */
+  .empty { text-align: center; padding: 40px 20px; color: #999; font-size: 14px; }
+  .loading { text-align: center; padding: 40px 20px; color: #999; font-size: 14px; }
+
+  /* アラート */
+  .alert { border-radius: 8px; padding: 10px 14px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+  .alert.success { background: #eaf3de; color: #3B6D11; border: 0.5px solid #97C459; }
+  .alert.error { background: #fcebeb; color: #A32D2D; border: 0.5px solid #F09595; }
+  .hidden { display: none; }
+
+  /* 削除確認モーダル */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.4);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100; padding: 20px;
+  }
+  .modal-overlay.hidden { display: none; }
+  .modal {
+    background: #fff; border-radius: 14px; padding: 24px 20px;
+    max-width: 340px; width: 100%; display: flex; flex-direction: column; gap: 14px;
+  }
+  .modal h2 { font-size: 16px; font-weight: 600; }
+  .modal p { font-size: 14px; color: #555; line-height: 1.5; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+  .btn-cancel { background: none; border: 0.5px solid #ddd; border-radius: 8px; padding: 8px 18px; font-size: 14px; cursor: pointer; font-family: inherit; }
+  .btn-confirm-delete { background: #e24b4a; color: #fff; border: none; border-radius: 8px; padding: 8px 18px; font-size: 14px; cursor: pointer; font-family: inherit; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>🍳 レシピ一覧</h1>
+    <a href="recipe_form.html" class="btn-add-new">＋ 新規登録</a>
+  </div>
+
+  <div id="alert" class="alert hidden"></div>
+
+  <!-- フィルター -->
+  <div class="filter-bar">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="search" placeholder="レシピ名で検索…" oninput="applyFilter()">
+    </div>
+    <div class="tags" id="filter-tags"></div>
+  </div>
+
+  <!-- カード一覧 -->
+  <div id="cards" class="cards">
+    <div class="loading">読み込み中…</div>
+  </div>
+</div>
+
+<!-- 削除確認モーダル -->
+<div class="modal-overlay hidden" id="modal">
+  <div class="modal">
+    <h2>レシピを削除しますか？</h2>
+    <p id="modal-recipe-name" style="font-weight:600;"></p>
+    <p>この操作は元に戻せません。</p>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">キャンセル</button>
+      <button class="btn-confirm-delete" onclick="confirmDelete()">削除する</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://rlqihqmeynyqkeeilitg.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJscWlocW1leW55cWtlZWlsaXRnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NzU2OTQsImV4cCI6MjA5NjM1MTY5NH0.wxDWoZjLbXDq7Q6HJBdKUjDBTZ1DkG_lhDRMSElMPq8";
+
+const TAGS = ["和食","洋食","中華","エスニック","作り置き","時短","おつまみ","お弁当","主食","主菜","副菜","揚げ物","汁物","デザート"];
+
+let allRecipes = [];
+let selectedTags = new Set();
+let deleteTargetId = null;
+
+// タグフィルター描画
+const filterTagsEl = document.getElementById("filter-tags");
+TAGS.forEach(name => {
+  const el = document.createElement("div");
+  el.className = "tag";
+  el.textContent = name;
+  el.onclick = () => {
+    if (selectedTags.has(name)) { selectedTags.delete(name); el.classList.remove("selected"); }
+    else { selectedTags.add(name); el.classList.add("selected"); }
+    applyFilter();
+  };
+  filterTagsEl.appendChild(el);
+});
+
+// データ取得
+async function fetchRecipes() {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/recipes?select=*&order=created_at.desc`, {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      }
+    });
+    if (!res.ok) throw new Error(await res.text());
+    allRecipes = await res.json();
+    applyFilter();
+  } catch (e) {
+    showAlert("error", "データの取得に失敗しました: " + e.message);
+    document.getElementById("cards").innerHTML = "";
+  }
+}
+
+// フィルター適用
+function applyFilter() {
+  const keyword = document.getElementById("search").value.trim().toLowerCase();
+  let filtered = allRecipes;
+  if (keyword) filtered = filtered.filter(r => r.title.toLowerCase().includes(keyword));
+  if (selectedTags.size) filtered = filtered.filter(r => r.tags && [...selectedTags].every(t => r.tags.includes(t)));
+  renderCards(filtered);
+}
+
+// カード描画
+function renderCards(recipes) {
+  const container = document.getElementById("cards");
+  if (recipes.length === 0) {
+    container.innerHTML = `<div class="empty">レシピが見つかりません</div>`;
+    return;
+  }
+  container.innerHTML = "";
+  recipes.forEach(r => {
+    const card = document.createElement("div");
+    card.className = "card";
+
+    const diffClass = r.difficulty === "簡単" ? "easy" : r.difficulty === "難しい" ? "hard" : "";
+    const metaBadges = [
+      r.cooking_time ? `<span class="badge">⏱ ${r.cooking_time}分</span>` : "",
+      r.servings ? `<span class="badge">👤 ${r.servings}人前</span>` : "",
+      r.difficulty ? `<span class="badge ${diffClass}">${r.difficulty}</span>` : "",
+    ].filter(Boolean).join("");
+
+    const tagBadges = (r.tags || []).map(t => `<span class="card-tag">${t}</span>`).join("");
+
+    card.innerHTML = `
+      <div class="card-top">
+        <div class="card-title">${escapeHtml(r.title)}</div>
+        ${r.is_favorite ? '<span class="card-favorite">❤️</span>' : ''}
+      </div>
+      ${metaBadges ? `<div class="card-meta">${metaBadges}</div>` : ""}
+      ${tagBadges ? `<div class="card-tags">${tagBadges}</div>` : ""}
+      <div class="card-actions">
+        <button class="btn-edit" onclick="editRecipe('${r.id}')">✏️ 編集</button>
+        <button class="btn-delete" onclick="openModal('${r.id}', '${escapeHtml(r.title)}')">🗑 削除</button>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function editRecipe(id) {
+  window.location.href = `recipe_form.html?id=${id}`;
+}
+
+// 削除モーダル
+function openModal(id, name) {
+  deleteTargetId = id;
+  document.getElementById("modal-recipe-name").textContent = name;
+  document.getElementById("modal").classList.remove("hidden");
+}
+function closeModal() {
+  deleteTargetId = null;
+  document.getElementById("modal").classList.add("hidden");
+}
+async function confirmDelete() {
+  if (!deleteTargetId) return;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/recipes?id=eq.${deleteTargetId}`, {
+      method: "DELETE",
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      }
+    });
+    if (!res.ok) throw new Error(await res.text());
+    closeModal();
+    showAlert("success", "削除しました");
+    await fetchRecipes();
+  } catch (e) {
+    closeModal();
+    showAlert("error", "削除に失敗しました: " + e.message);
+  }
+}
+
+// アラート
+function showAlert(type, msg) {
+  const el = document.getElementById("alert");
+  el.className = `alert ${type}`;
+  el.textContent = type === "success" ? "✅ " + msg : "⚠️ " + msg;
+  el.classList.remove("hidden");
+  if (type === "success") setTimeout(() => el.classList.add("hidden"), 3000);
+}
+
+fetchRecipes();
+</script>
+</body>
+</html>
