@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>レシピを追加</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif; background: #f5f5f3; color: #1a1a1a; padding: 24px 16px 60px; }
+  .container { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+  h1 { font-size: 20px; font-weight: 500; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  section { background: #fff; border: 0.5px solid #ddd; border-radius: 12px; padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; }
+  h3 { font-size: 13px; font-weight: 500; color: #666; margin-bottom: 2px; }
+  label.field-label { font-size: 13px; color: #666; display: block; margin-bottom: 4px; }
+  input[type=text], input[type=number], select, textarea {
+    width: 100%; border: 0.5px solid #ccc; border-radius: 8px;
+    padding: 8px 10px; font-size: 14px; font-family: inherit;
+    background: #fff; color: #1a1a1a; outline: none; transition: border-color .15s;
+  }
+  input:focus, select:focus, textarea:focus { border-color: #185FA5; }
+  textarea { resize: vertical; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .favorite-label { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+  .tags { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tag {
+    padding: 6px 14px; border: 2px solid #ccc; border-radius: 20px;
+    font-size: 13px; cursor: pointer; user-select: none; transition: all .15s;
+    background: transparent; color: #666;
+  }
+  .tag.selected { border-color: #185FA5; background: #185FA5; color: #fff; font-weight: 500; }
+  .ingredient-row { display: grid; gap: 8px; align-items: center; }
+  .ingredient-row.normal { grid-template-columns: 1fr 110px 32px; }
+  .ingredient-row.grouped { grid-template-columns: 12px 1fr 110px 32px; }
+  .ingredient-row.group-header { grid-template-columns: 18px 1fr 32px; }
+  .group-bar { width: 2px; background: #ccc; border-radius: 2px; height: 36px; justify-self: center; }
+  .group-icon { color: #999; font-size: 14px; }
+  .step-row { display: grid; grid-template-columns: 28px 1fr 32px; gap: 8px; align-items: flex-start; }
+  .step-num { width: 28px; height: 28px; border-radius: 50%; background: #f0f0f0; border: 0.5px solid #ddd; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 500; color: #666; flex-shrink: 0; margin-top: 4px; }
+  .btn-icon { background: none; border: 0.5px solid #ddd; border-radius: 8px; padding: 0 8px; height: 36px; cursor: pointer; color: #e24b4a; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+  .btn-icon:disabled { opacity: 0.3; cursor: default; }
+  .btn-add { background: none; border: 0.5px solid #ddd; border-radius: 8px; padding: 6px 12px; font-size: 13px; cursor: pointer; color: #444; display: flex; align-items: center; gap: 5px; }
+  .btn-add:hover { background: #f5f5f3; }
+  .add-row { display: flex; gap: 10px; margin-top: 4px; }
+  .footer { display: flex; gap: 10px; justify-content: flex-end; align-items: center; }
+  .btn-reset { background: none; border: none; font-size: 14px; color: #888; cursor: pointer; padding: 8px; }
+  .btn-submit { background: #1a1a1a; color: #fff; border: none; border-radius: 8px; padding: 10px 24px; font-size: 14px; font-weight: 500; cursor: pointer; transition: opacity .15s; }
+  .btn-submit:disabled { opacity: 0.4; cursor: not-allowed; }
+  .alert { border-radius: 8px; padding: 10px 14px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+  .alert.success { background: #eaf3de; color: #3B6D11; border: 0.5px solid #97C459; }
+  .alert.error { background: #fcebeb; color: #A32D2D; border: 0.5px solid #F09595; word-break: break-all; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🍳 レシピを追加</h1>
+
+  <div id="alert" class="alert hidden"></div>
+
+  <!-- 基本情報 -->
+  <section>
+    <h3>基本情報</h3>
+    <div>
+      <label class="field-label">レシピ名 <span style="color:#e24b4a">*</span></label>
+      <input type="text" id="title" placeholder="例：鶏の唐揚げ">
+    </div>
+    <div>
+      <label class="field-label">何人前</label>
+      <input type="number" id="servings" value="4" min="1" placeholder="4">
+    </div>
+    <div class="grid2">
+      <div>
+        <label class="field-label">調理時間（分）</label>
+        <input type="number" id="cooking_time" min="1" placeholder="30">
+      </div>
+      <div>
+        <label class="field-label">難易度</label>
+        <select id="difficulty">
+          <option>簡単</option>
+          <option selected>普通</option>
+          <option>難しい</option>
+        </select>
+      </div>
+    </div>
+    <label class="favorite-label">
+      <input type="checkbox" id="is_favorite"> ❤️ お気に入りに追加
+    </label>
+  </section>
+
+  <!-- タグ -->
+  <section>
+    <h3>タグ</h3>
+    <div class="tags" id="tags">
+      <!-- JS で生成 -->
+    </div>
+  </section>
+
+  <!-- 材料 -->
+  <section>
+    <h3>材料</h3>
+    <div id="ingredients" style="display:flex;flex-direction:column;gap:6px;"></div>
+    <div class="add-row">
+      <button class="btn-add" onclick="addItem()">＋ 材料を追加</button>
+      <button class="btn-add" onclick="addGroup()">☰ グループを追加</button>
+    </div>
+  </section>
+
+  <!-- 手順 -->
+  <section>
+    <h3>手順</h3>
+    <div id="steps" style="display:flex;flex-direction:column;gap:10px;"></div>
+    <div class="add-row" style="margin-top:4px;">
+      <button class="btn-add" onclick="addStep()">＋ 手順を追加</button>
+    </div>
+  </section>
+
+  <!-- メモ -->
+  <section>
+    <h3>メモ</h3>
+    <textarea id="memo" rows="3" placeholder="コツや補足など自由に…"></textarea>
+  </section>
+
+  <div class="footer">
+    <button class="btn-reset" onclick="resetForm()">リセット</button>
+    <button class="btn-submit" id="submit-btn" onclick="handleSubmit()">登録する</button>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://rlqihqmeynyqkeeilitg.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJscWlocW1leW55cWtlZWlsaXRnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NzU2OTQsImV4cCI6MjA5NjM1MTY5NH0.wxDWoZjLbXDq7Q6HJBdKUjDBTZ1DkG_lhDRMSElMPq8";
+
+const TAGS = ["和食","洋食","中華","エスニック","作り置き","時短","おつまみ","お弁当","主食","主菜","副菜","揚げ物","汁物","デザート"];
+let selectedTags = new Set();
+
+// タグ描画
+const tagsEl = document.getElementById("tags");
+TAGS.forEach(name => {
+  const el = document.createElement("div");
+  el.className = "tag";
+  el.textContent = name;
+  el.onclick = () => {
+    if (selectedTags.has(name)) { selectedTags.delete(name); el.classList.remove("selected"); }
+    else { selectedTags.add(name); el.classList.add("selected"); }
+  };
+  tagsEl.appendChild(el);
+});
+
+// 材料
+let ingredientData = [{ type: "item", name: "", amount: "", grouped: false }];
+
+function renderIngredients() {
+  const container = document.getElementById("ingredients");
+  container.innerHTML = "";
+  ingredientData.forEach((ing, i) => {
+    const row = document.createElement("div");
+    if (ing.type === "group") {
+      row.className = "ingredient-row group-header";
+      row.innerHTML = `
+        <span style="color:#999;font-size:16px;">☰</span>
+        <input type="text" value="${ing.name}" placeholder="グループ名（例：A、ソース）"
+          style="font-weight:500;font-size:13px;"
+          oninput="ingredientData[${i}].name=this.value">
+        <button class="btn-icon" onclick="removeIngredient(${i})">🗑</button>`;
+    } else {
+      row.className = `ingredient-row ${ing.grouped ? "grouped" : "normal"}`;
+      row.innerHTML = `
+        ${ing.grouped ? '<div class="group-bar"></div>' : ""}
+        <input type="text" value="${ing.name}" placeholder="材料名"
+          oninput="ingredientData[${i}].name=this.value">
+        <input type="text" value="${ing.amount}" placeholder="分量"
+          oninput="ingredientData[${i}].amount=this.value">
+        <button class="btn-icon" ${ingredientData.length === 1 ? "disabled" : ""} onclick="removeIngredient(${i})">🗑</button>`;
+    }
+    container.appendChild(row);
+  });
+}
+
+function addItem() {
+  const last = ingredientData[ingredientData.length - 1];
+  const grouped = last?.type === "group" || last?.grouped === true;
+  ingredientData.push({ type: "item", name: "", amount: "", grouped });
+  renderIngredients();
+}
+
+function addGroup() {
+  ingredientData.push({ type: "group", name: "" });
+  ingredientData.push({ type: "item", name: "", amount: "", grouped: true });
+  renderIngredients();
+}
+
+function removeIngredient(i) {
+  if (ingredientData.length === 1) return;
+  ingredientData.splice(i, 1);
+  renderIngredients();
+}
+
+// 手順
+let stepData = [""];
+
+function renderSteps() {
+  const container = document.getElementById("steps");
+  container.innerHTML = "";
+  stepData.forEach((step, i) => {
+    const row = document.createElement("div");
+    row.className = "step-row";
+    row.innerHTML = `
+      <div class="step-num">${i + 1}</div>
+      <textarea rows="2" placeholder="手順 ${i + 1} を入力…"
+        oninput="stepData[${i}]=this.value">${step}</textarea>
+      <button class="btn-icon" style="margin-top:4px" ${stepData.length === 1 ? "disabled" : ""} onclick="removeStep(${i})">🗑</button>`;
+    container.appendChild(row);
+  });
+}
+
+function addStep() {
+  stepData.push("");
+  renderSteps();
+}
+
+function removeStep(i) {
+  if (stepData.length === 1) return;
+  stepData.splice(i, 1);
+  renderSteps();
+}
+
+// アラート
+function showAlert(type, msg) {
+  const el = document.getElementById("alert");
+  el.className = `alert ${type}`;
+  el.textContent = type === "success" ? "✅ " + msg : "⚠️ " + msg;
+  el.classList.remove("hidden");
+  if (type === "success") setTimeout(() => el.classList.add("hidden"), 3000);
+}
+
+// リセット
+function resetForm() {
+  document.getElementById("title").value = "";
+  document.getElementById("servings").value = "4";
+  document.getElementById("cooking_time").value = "";
+  document.getElementById("difficulty").value = "普通";
+  document.getElementById("is_favorite").checked = false;
+  document.getElementById("memo").value = "";
+  selectedTags.clear();
+  document.querySelectorAll(".tag").forEach(el => el.classList.remove("selected"));
+  ingredientData = [{ type: "item", name: "", amount: "", grouped: false }];
+  stepData = [""];
+  renderIngredients();
+  renderSteps();
+  document.getElementById("alert").classList.add("hidden");
+}
+
+// 登録
+async function handleSubmit() {
+  const title = document.getElementById("title").value.trim();
+  if (!title) { showAlert("error", "レシピ名を入力してください"); return; }
+
+  const btn = document.getElementById("submit-btn");
+  btn.disabled = true;
+  btn.textContent = "登録中…";
+
+  const payload = {
+    title,
+    servings: parseInt(document.getElementById("servings").value) || null,
+    cooking_time: parseInt(document.getElementById("cooking_time").value) || null,
+    difficulty: document.getElementById("difficulty").value,
+    is_favorite: document.getElementById("is_favorite").checked,
+    memo: document.getElementById("memo").value.trim() || null,
+    tags: selectedTags.size ? [...selectedTags] : null,
+    ingredients: ingredientData.filter(i => i.type === "group" || i.name.trim()),
+    steps: stepData.filter(s => s.trim()),
+  };
+
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/recipes`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(err);
+    }
+    showAlert("success", "登録しました！");
+    resetForm();
+  } catch (e) {
+    showAlert("error", e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "登録する";
+  }
+}
+
+// 初期描画
+renderIngredients();
+renderSteps();
+</script>
+</body>
+</html>
