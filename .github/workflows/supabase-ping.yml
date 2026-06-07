@@ -3,15 +3,22 @@ name: Supabase Keep Alive
 on:
   schedule:
     - cron: '0 0 * * 1'  # 毎週月曜 UTC 0:00（日本時間月曜9:00）
-  workflow_dispatch:  # 手動実行も可能
+  workflow_dispatch:
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Supabase
+      - name: Ping Supabase (lunch-app)
         run: |
           curl -s -o /dev/null -w "%{http_code}" \
             "https://vlkbhhtqyerlwwbjobnf.supabase.co/rest/v1/restaurants?select=id&limit=1" \
             -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZsa2JoaHRxeWVybHd3YmpvYm5mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1MTk5MzQsImV4cCI6MjA5NTA5NTkzNH0.gF6zT5AEXRu5_bMUmp0GHqrCsmT7bOekHlLLbGuaq2U" \
             -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZsa2JoaHRxeWVybHd3YmpvYm5mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1MTk5MzQsImV4cCI6MjA5NTA5NTkzNH0.gF6zT5AEXRu5_bMUmp0GHqrCsmT7bOekHlLLbGuaq2U"
+
+      - name: Ping Supabase (recipe_form)
+        run: |
+          curl -s -o /dev/null -w "%{http_code}" \
+            "https://rlqihqmeynyqkeeilitg.supabase.co/rest/v1/recipes?select=id&limit=1" \
+            -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJscWlocW1leW55cWtlZWlsaXRnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NzU2OTQsImV4cCI6MjA5NjM1MTY5NH0.wxDWoZjLbXDq7Q6HJBdKUjDBTZ1DkG_lhDRMSElMPq8" \
+            -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJscWlocW1leW55cWtlZWlsaXRnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NzU2OTQsImV4cCI6MjA5NjM1MTY5NH0.wxDWoZjLbXDq7Q6HJBdKUjDBTZ1DkG_lhDRMSElMPq8"
