@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>お店データ追加登録</title>
+<style>
+  body { font-family: sans-serif; max-width: 600px; margin: 3rem auto; padding: 1rem; background: #0f0e0c; color: #f0ead6; }
+  h1 { color: #e8a045; }
+  p { color: #a09880; line-height: 1.6; }
+  button { background: #e85d45; color: white; border: none; padding: 1rem 2rem; font-size: 1.1rem; border-radius: 8px; cursor: pointer; margin-top: 1rem; }
+  #log { margin-top: 1.5rem; font-size: 0.85rem; line-height: 1.8; background: #1a1815; padding: 1rem; border-radius: 8px; max-height: 400px; overflow-y: auto; }
+  .ok { color: #5dbd7a; } .err { color: #e85d45; } .info { color: #e8a045; }
+</style>
+</head>
+<body>
+<h1>🍱 お店データ追加登録</h1>
+<p>ボタンを押すと、ラーメン・カレー・中華・定食・カフェなど新規お店をSupabaseに追加登録します。</p>
+<button onclick="register()">追加登録スタート</button>
+<div id="log"></div>
+<script>
+const SUPABASE_URL = 'https://vlkbhhtqyerlwwbjobnf.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZsa2JoaHRxeWVybHd3YmpvYm5mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1MTk5MzQsImV4cCI6MjA5NTA5NTkzNH0.gF6zT5AEXRu5_bMUmp0GHqrCsmT7bOekHlLLbGuaq2U';
+const API = `${SUPABASE_URL}/rest/v1/restaurants`;
+const HEADERS = { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Prefer': 'return=minimal' };
+
+const restaurants = [
+  // ===== 日本橋 =====
+  // ラーメン・麺類
+  { name:'つじ田 八重洲日本橋店', office:'nihonbashi', genre:'つけ麺・ラーメン', address:'八重洲1-4-6 八重洲境井ビル1F（徒歩5分）', open_time:'11:00', close_time:'22:30', closed_days:'なし', is_convenience:false, notes:'つけ麺の名店。評価4.4★ 土日も営業。' },
+  { name:'麺処 かいしん（日本橋）', office:'nihonbashi', genre:'ラーメン', address:'日本橋3-7-13 DK日本橋3ビル（徒歩4分）', open_time:'11:00', close_time:'15:00', closed_days:'土日', is_convenience:false, notes:'ラーメン+中華定食。ランチセットお得。評価3.6★' },
+  { name:'太子堂しおそば コレド室町テラス店', office:'nihonbashi', genre:'塩ラーメン', address:'日本橋室町3-2-1 コレド室町テラスB1（徒歩8分）', open_time:'11:00', close_time:'22:00', closed_days:'なし', is_convenience:false, notes:'真鯛出汁の上品な塩ラーメン。評価4.2★ 土日も営業。' },
+  { name:'炭火焼中華そば 四風道（内神田から徒歩圏）', office:'nihonbashi', genre:'魚介ラーメン', address:'鍛冶町3-3-2（日本橋から徒歩10分）', open_time:'11:00', close_time:'15:30', closed_days:'なし', is_convenience:false, notes:'サーモン・鯖・海老など魚介スープが絶品。評価4.3★ 土日も営業。' },
+  // カレー
+  { name:'HOPPERS（ホッパーズ）', office:'nihonbashi', genre:'スリランカカレー', address:'日本橋兜町7-1 KABUTO ONE 1F（徒歩8分）', open_time:'11:30', close_time:'14:00', closed_days:'水曜', is_convenience:false, notes:'ミシュラン掲載スリランカ料理。本格的。評価4.4★ 土日も営業。' },
+  { name:'Old Delhi（オールドデリー）', office:'nihonbashi', genre:'インドカレー', address:'日本橋2-5-1 高島屋S.C.新館7F（徒歩3分）', open_time:'11:00', close_time:'15:00', closed_days:'なし', is_convenience:false, notes:'本格インドカレー。ナンが美味。評価4.2★ 土日も営業。' },
+  { name:'インド料理スーリヤ 日本橋店', office:'nihonbashi', genre:'インドカレー', address:'日本橋2-7-1 地下1F（徒歩3分）', open_time:'11:00', close_time:'15:00', closed_days:'日曜', is_convenience:false, notes:'バターチキンが人気。ナン大盛り可。評価4.2★' },
+  { name:'ナマラマサラ 日本橋店', office:'nihonbashi', genre:'スパイスカレー', address:'日本橋室町2-3-1 コレド室町2 2F（徒歩8分）', open_time:'11:00', close_time:'23:00', closed_days:'なし', is_convenience:false, notes:'グルテンフリー・添加物なしの体に優しいカレー。評価4.4★ 土日も営業。' },
+  { name:'バタカリ（Butter Curry）', office:'nihonbashi', genre:'インドカレー', address:'日本橋小網町18-11 鈴木ビル2（徒歩10分）', open_time:'11:00', close_time:'15:00', closed_days:'なし', is_convenience:false, notes:'家族経営の本格インドカレー。大盛り・安い。評価4.3★ 土日も営業。' },
+  // 中華
+  { name:'四川飯店 日本橋', office:'nihonbashi', genre:'四川料理', address:'日本橋室町2-2-1 コレド室町1 2F（徒歩8分）', open_time:'11:00', close_time:'22:00', closed_days:'なし', is_convenience:false, notes:'陳健一の四川飯店。麻婆豆腐が絶品。評価4.0★ 土日も営業。' },
+  { name:'中国菜ARATA', office:'nihonbashi', genre:'中華・四川', address:'日本橋小舟町15-17 1F（徒歩10分）', open_time:'12:00', close_time:'14:00', closed_days:'月・水・日', is_convenience:false, notes:'カウンターの中華コース。評価4.6★ 木〜土のみランチ。' },
+  { name:'万包軒 日本橋店', office:'nihonbashi', genre:'中華', address:'日本橋2-4-1（徒歩3分）', open_time:'11:00', close_time:'15:00', closed_days:'土日', is_convenience:false, notes:'ランチセット充実。ライスお代わり自由。評価3.7★' },
+  { name:'日本橋 紫苑（三越内）', office:'nihonbashi', genre:'広東料理・飲茶', address:'日本橋室町1-4-1 三越本店新館10F（徒歩8分）', open_time:'11:00', close_time:'16:00', closed_days:'なし', is_convenience:false, notes:'三越内の広東料理。ランチコース充実。評価4.1★ 土日も営業。' },
+  // 丼・定食
+  { name:'石井（Ishii）', office:'nihonbashi', genre:'魚定食', address:'日本橋2-2-15（徒歩3分）', open_time:'11:00', close_time:'13:30', closed_days:'土日', is_convenience:false, notes:'30年以上続く隠れた名店。鯖などの魚定食が絶品。評価4.5★' },
+  { name:'かつ吉（Katsukichi）', office:'nihonbashi', genre:'とんかつ', address:'日本橋2-5-1 高島屋S.C.新館6F（徒歩3分）', open_time:'11:00', close_time:'15:00', closed_days:'なし', is_convenience:false, notes:'やわらかいとんかつ。ご飯おかわり無料。評価4.3★ 土日も営業。' },
+  { name:'とり鳥 日本橋（Toridori）', office:'nihonbashi', genre:'焼き鳥・定食', address:'日本橋2-2-16 共立日本橋ビルB1F（徒歩3分）', open_time:'11:30', close_time:'14:30', closed_days:'土日', is_convenience:false, notes:'焼き鳥ランチが充実。コスパ抜群。評価4.4★' },
+  { name:'うどん金子半之助 室町店', office:'nihonbashi', genre:'うどん・天ぷら', address:'日本橋室町2-3-1 コレド室町2 地下ホーム1（徒歩8分）', open_time:'11:00', close_time:'21:00', closed_days:'なし', is_convenience:false, notes:'天丼うどんセット。大盛り同額。評価4.1★ 土日も営業。' },
+  // カフェ・軽食
+  { name:'MARUZEN Café 日本橋店', office:'nihonbashi', genre:'カフェ・洋食', address:'日本橋2-3-10 日本橋丸善東急ビル3F（徒歩3分）', open_time:'09:30', close_time:'20:30', closed_days:'なし', is_convenience:false, notes:'書店内カフェ。ハヤシライスが名物。評価4.0★ 土日も営業。' },
+  { name:'SiKiTO CAFE 日本橋', office:'nihonbashi', genre:'カフェ・ハンバーグ', address:'日本橋2-10-4（徒歩4分）', open_time:'09:00', close_time:'22:00', closed_days:'なし', is_convenience:false, notes:'デミグラスハンバーグ丼。おしゃれな空間。評価4.2★ 土日も営業。' },
+  { name:'HOPPERS（ホッパーズ）', office:'nihonbashi', genre:'スリランカカレー', address:'日本橋兜町7-1 KABUTO ONE 1F（徒歩8分）', open_time:'11:30', close_time:'14:00', closed_days:'水曜', is_convenience:false, notes:'ミシュラン掲載スリランカ料理。評価4.4★ 土日も営業。' },
+
+  // ===== 内神田 =====
+  // ラーメン・麺類
+  { name:'神田ラーメン わいず 神田本店', office:'uchikanda', genre:'家系ラーメン', address:'内神田3-9-6 1F（徒歩5分）', open_time:'10:30', close_time:'24:00', closed_days:'日曜', is_convenience:false, notes:'常に行列の家系ラーメン。太麺・濃厚スープ。評価4.0★ 土曜も深夜まで営業。' },
+  { name:'TOKYO RAMEN とうか', office:'uchikanda', genre:'ラーメン', address:'内神田3-12-10 鵄見ビル1F（徒歩6分）', open_time:'11:00', close_time:'22:00', closed_days:'日曜', is_convenience:false, notes:'和牛ラーメンが名物。英語メニューあり。評価4.2★' },
+  { name:'らぁめん ふるいち 神田店', office:'uchikanda', genre:'ラーメン', address:'内神田3-10-2 筍木ビル1F（徒歩5分）', open_time:'09:00', close_time:'翌4:00', closed_days:'なし', is_convenience:false, notes:'深夜まで営業。自家製麺。店主フレンドリー。評価4.2★ 土日も営業。' },
+  { name:'三馬路 東京店', office:'uchikanda', genre:'塩ラーメン・つけ麺', address:'内神田2-9-6 祥司ビル1F（徒歩4分）', open_time:'11:30', close_time:'14:45', closed_days:'土日', is_convenience:false, notes:'昆布水つけ麺が絶品。行列必至。評価4.3★' },
+  { name:'豚骨ラーメン 豚と小麦', office:'uchikanda', genre:'豚骨ラーメン', address:'鍛冶町1-5-1 中沢ビル1F（徒歩7分）', open_time:'11:00', close_time:'22:30', closed_days:'日曜', is_convenience:false, notes:'黒にんにく豚骨。英語メニューあり。評価4.2★ 土曜も営業。' },
+  { name:'つけ麺 すごう（神田）', office:'uchikanda', genre:'つけ麺', address:'内神田2-9-11（徒歩4分）', open_time:'11:00', close_time:'14:30', closed_days:'水・土日', is_convenience:false, notes:'Tabelog TOP5000の名店の姉妹店。濃厚つけ麺。評価4.2★' },
+  { name:'麺処 かいしん 神田店', office:'uchikanda', genre:'貝出汁ラーメン', address:'内神田3-19-10（徒歩7分）', open_time:'11:30', close_time:'翌5:00', closed_days:'なし', is_convenience:false, notes:'蛤出汁の塩ラーメン。深夜まで営業。評価4.3★ 土日も営業。' },
+  // カレー
+  { name:'Komi\'z（コミズ）', office:'uchikanda', genre:'スパイスカレー', address:'鍛冶町3-3-1 カリガネビル2F（徒歩8分）', open_time:'11:00', close_time:'21:50', closed_days:'日曜', is_convenience:false, notes:'淡路島玉ねぎカレーが名物。コスパ◎。評価4.4★ 土曜も営業。' },
+  { name:'Loup de mer（ルー・ドゥ・メール）', office:'uchikanda', genre:'洋食カレー', address:'内神田3-10-7 斉藤ビル2F（徒歩5分）', open_time:'11:30', close_time:'14:30', closed_days:'日曜', is_convenience:false, notes:'オムレツカレーが絶品。常連多い名店。評価4.3★ 土曜も営業。' },
+  { name:'South Indian HITSUJIYA', office:'uchikanda', genre:'南インドカレー', address:'内神田3-10-7 斉藤ビル1F（徒歩5分）', open_time:'11:00', close_time:'15:00', closed_days:'なし', is_convenience:false, notes:'本格南インド料理。ミールス・ドーサが絶品。評価4.5★ 土日も営業。' },
+  { name:'ザ・タンドール 神田店', office:'uchikanda', genre:'インドカレー', address:'内神田1-5-11 セントラル大手町ビル1F（徒歩3分）', open_time:'11:00', close_time:'15:00', closed_days:'日曜', is_convenience:false, notes:'ナン食べ放題。ランチセット充実。ハラール対応。評価4.3★ 土曜も営業。' },
+  { name:'Andhra Dhaba（アンドラダーバ）', office:'uchikanda', genre:'南インド料理', address:'内神田3-7-8 サトウハウスビル2F（徒歩5分）', open_time:'11:15', close_time:'15:00', closed_days:'なし', is_convenience:false, notes:'本格南インド料理。ミールスが大人気。土日も営業。評価4.1★' },
+  { name:'Bondy 神田店', office:'uchikanda', genre:'欧風カレー', address:'内神田1-12-3 翔和内神田ビルB1（徒歩3分）', open_time:'11:30', close_time:'14:45', closed_days:'土日', is_convenience:false, notes:'神保町の名店ボンディの支店。欧風カレーの傑作。評価4.2★' },
+  // 中華・アジア
+  { name:'天津飯店（Tenshin Hanten）', office:'uchikanda', genre:'台湾・中華', address:'内神田2-9-10 吉川第2ビル（徒歩4分）', open_time:'11:00', close_time:'15:00', closed_days:'日曜', is_convenience:false, notes:'台湾料理。スパイシー牛肉が人気。ランチ大盛り。評価3.8★ 土曜も営業。' },
+  { name:'ベトナム料理 ハノイ 神田店', office:'uchikanda', genre:'ベトナム料理', address:'内神田3-22-4（徒歩7分）', open_time:'11:00', close_time:'15:00', closed_days:'日曜', is_convenience:false, notes:'本格ブンチャー・フォー。ベトナム人シェフの本物の味。評価4.6★ 土曜も営業。' },
+  { name:'四川厨房 随苑 内神田店', office:'uchikanda', genre:'四川料理', address:'内神田2-10-2（徒歩4分）', open_time:'11:00', close_time:'22:00', closed_days:'なし', is_convenience:false, notes:'ランチは唐揚げ・ご飯・餃子のビュッフェ付きで超コスパ。評価3.7★ 土日も営業。' },
+  { name:'竹苑（Chikuen）', office:'uchikanda', genre:'中華・上海料理', address:'内神田3-22-4（徒歩7分）', open_time:'11:00', close_time:'14:00', closed_days:'日曜', is_convenience:false, notes:'本格上海料理。日替わりランチがお得。評価4.0★ 土曜も営業。' },
+  // 丼・定食
+  { name:'Happiness is KATSUDON 神田', office:'uchikanda', genre:'カツ丼', address:'鍛冶町2-13-11 JR神田駅高架下（徒歩5分）', open_time:'11:00', close_time:'21:30', closed_days:'なし', is_convenience:false, notes:'サクサクカツ丼。卵がふわふわ。評価4.1★ 土日も営業。' },
+  { name:'勝真（Katsushin）', office:'uchikanda', genre:'とんかつ', address:'内神田2-6-4（徒歩4分）', open_time:'11:00', close_time:'14:30', closed_days:'土日', is_convenience:false, notes:'揚げたてとんかつ。目の前で調理。ゴマすり体験あり。評価4.3★' },
+  { name:'神田食堂 本店', office:'uchikanda', genre:'定食', address:'内神田1-18-11（徒歩3分）', open_time:'11:00', close_time:'16:00', closed_days:'なし', is_convenience:false, notes:'もつ煮定食などシンプルな定食が安い。評価4.0★ 土日も営業。' },
+  { name:'葉菜海家', office:'uchikanda', genre:'魚・刺身定食', address:'内神田1-9 TYDビル（徒歩2分）', open_time:'11:30', close_time:'14:00', closed_days:'土日', is_convenience:false, notes:'居酒屋のランチ。さしみが美味しい。評価4.1★' },
+  // カフェ・軽食
+  { name:'Coffee House LOFT', office:'uchikanda', genre:'喫茶・軽食', address:'内神田3-2-10（徒歩5分）', open_time:'07:00', close_time:'16:00', closed_days:'土日', is_convenience:false, notes:'昭和レトロ喫茶。ふわふわブリオッシュトーストが絶品。評価4.5★' },
+  { name:'馬亞車 神田店', office:'uchikanda', genre:'喫茶・パスタ', address:'内神田2-2-1 鎌倉河岸ビル（徒歩5分）', open_time:'07:00', close_time:'17:00', closed_days:'土日', is_convenience:false, notes:'昭和の純喫茶。ナポリタンが美味しい。評価4.0★' },
+  { name:'Takayama Coffee', office:'uchikanda', genre:'カフェ・軽食', address:'神田須田町1-12-6（徒歩8分）', open_time:'11:00', close_time:'17:00', closed_days:'金・土日', is_convenience:false, notes:'隠れ家レトロ喫茶。シナモントーストが絶品。評価4.6★ 月〜木のみ。' },
+];
+
+const log = document.getElementById('log');
+function addLog(msg, type='ok') {
+  const div = document.createElement('div');
+  div.className = type;
+  div.textContent = msg;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+async function register() {
+  log.innerHTML = '';
+  addLog(`📋 ${restaurants.length}件のお店を登録します...`, 'info');
+  let ok = 0, ng = 0;
+  for (const r of restaurants) {
+    try {
+      const res = await fetch(API, { method:'POST', headers:HEADERS, body:JSON.stringify(r) });
+      if (res.ok || res.status === 201) {
+        addLog(`✅ ${r.name}（${r.office === 'nihonbashi' ? '日本橋' : '内神田'} / ${r.genre}）`, 'ok');
+        ok++;
+      } else {
+        addLog(`❌ ${r.name} - Status: ${res.status}`, 'err');
+        ng++;
+      }
+    } catch(e) {
+      addLog(`❌ ${r.name} - ${e.message}`, 'err');
+      ng++;
+    }
+  }
+  addLog(`🎉 完了！ 成功: ${ok}件 / 失敗: ${ng}件`, 'info');
+}
+</script>
+</body>
+</html>
